@@ -17,6 +17,13 @@ from threading import Thread
 
 
 def restart_program():
+    """
+    :Description: 重启项目
+    :Author: lym
+    :Date: 2023/5/25 12:07
+    :param None
+    :return None
+    """
     python = sys.executable
     os.execl(python, python, *sys.argv)
 
@@ -24,6 +31,13 @@ def restart_program():
 class ImdbSpider():
 
     def __init__(self):
+        """
+        :Description: 构造方法
+        :Author: lym
+        :Date: 2023/5/25 12:06
+        :param self
+        :return None
+        """
         # 爬取地址
         self.imdb_search_path = "https://www.imdb.com/title/"
         # UA伪装
@@ -49,7 +63,13 @@ class ImdbSpider():
         self.current_time_str = datetime.datetime.now().strftime('%H:%M:%S')
 
     def get_current_time(self):
-
+        """
+        :Description: 获取当前时间，计算相关的格式化时间字符串
+        :Author: lym
+        :Date: 2023/5/25 12:08
+        :param self
+        :return current_time: 当前时间
+        """
         # 获取当前日期和时间
         current_time = datetime.datetime.now()
         # 将当前日期和时间转换为字符串格式
@@ -59,6 +79,14 @@ class ImdbSpider():
         return current_time
 
     def get_response(self, url, imdb_id):
+        """
+        :Description: 根据请求地址统一进行请求，获取响应
+        :Author: lym
+        :Date: 2023/5/25 12:09
+        :param url: 请求地址
+        :param imdb_id: 用来获取电影海报的imdb_id，用于打印日志
+        :return response: 请求响应
+        """
         i = 0
         # 超时重传，最多5次
         while i < 5:
@@ -90,8 +118,13 @@ class ImdbSpider():
         return None
 
     def process_html_and_request_img(self, imdb_id):
-        '''解析html，获取海报，电影信息'''
-
+        """
+        :Description: 根据响应解析html，获取海报
+        :Author: lym
+        :Date: 2023/5/25 12:10
+        :param imdb_id: 用来获取电影海报的imdb_id
+        :return content: 响应的内容，即海报文件
+        """
         response = self.get_response(url=(self.imdb_search_path + imdb_id),
                                      imdb_id=imdb_id)
 
@@ -136,8 +169,14 @@ class ImdbSpider():
         poster_response = requests.get(poster_url)
         return poster_response.content
 
-    # 爬取
     def download_poster_file(self, imdb_id):
+        """
+        :Description: 拿到海报文件后下载电影海报
+        :Author: lym
+        :Date: 2023/5/25 12:12
+        :param imdb_id: 用来获取电影海报的imdb_id
+        :return None
+        """
         # 拼接本地地址
         local_directory = "./poster/"
         local_file = imdb_id + ".jpg"
@@ -204,8 +243,14 @@ class ImdbSpider():
             json.dump(self.id_movie_dict, f)
         print('还剩 ', len(self.id_movie_dict), " 张海报...")
 
-    # 根据队列中的id进行下载
     def download_poster_from_queue(self):
+        """
+        :Description: 根据队列中的id进行爬取下载
+        :Author: lym
+        :Date: 2023/5/25 12:13
+        :param self
+        :return None
+        """
         while True:
             if not self.queue.empty():
                 # 队列不为空，可以取id出来
@@ -257,8 +302,14 @@ class ImdbSpider():
                 print("下载完毕！")
                 break
 
-    # 启动多个线程进行图片爬取
     def download_images_in_threads(self):
+        """
+        :Description: 启动多个线程进行图片爬取
+        :Author: lym
+        :Date: 2023/5/25 12:13
+        :param self
+        :return None
+        """
         threads = []
         for i in range(self.MAX_THREADS):
             t = Thread(target=self.download_poster_from_queue)
@@ -267,14 +318,27 @@ class ImdbSpider():
         for t in threads:
             t.join()
 
-    # 创建队列
     def create_queue(self, path, col):
+        """
+        :Description: 创建队列
+        :Author: lym
+        :Date: 2023/5/25 12:13
+        :param path: 存到队列的电影文件的地址
+        :return None
+        """
         # 读取DataFrame中的id信息，并存储到队列中
         self.movie_data = pd.read_csv(path, low_memory=False)
         for id in self.movie_data[col]:
             self.queue.put(id)
 
     def get_dict(self):
+        """
+        :Description: 生成剩余电影字典和失败电影字典
+        :Author: lym
+        :Date: 2023/5/25 12:15
+        :param self
+        :return None
+        """
         # 判断剩余电影字典保存情况
         if os.path.exists("id_movie_dict.json"):
             print("存在id_movie_dict")
