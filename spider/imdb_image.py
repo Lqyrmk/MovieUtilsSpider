@@ -8,7 +8,6 @@ import sys
 import time
 import datetime
 import logging
-import fcntl
 
 import pandas as pd
 from bs4 import BeautifulSoup
@@ -157,7 +156,9 @@ class ImdbSpider():
                 detail_soup = BeautifulSoup(poster_detail_response.content, 'lxml')
                 target_div1 = detail_soup.find('div', {'class': 'media-viewer'})
                 # target_div1 = detail_soup.find('div', {'data-testid': 'media-viewer'})
-                target_div2 = target_div1.find_all('div')[4]
+                # target_div2 = target_div1.find_all('div')[1]  # 有的电影是第5个div标签
+                # target_div2 = target_div1.find('div', {'class': 'kEDMKk'})  # 用class定位div
+                target_div2 = target_div1.find('div', {'class': 'lhANrx'})  # 用class定位div
                 poster_url = target_div2.find('img')['src']
 
                 current_time = self.get_current_time()
@@ -214,7 +215,8 @@ class ImdbSpider():
                 time_diff = (self.get_resource_end_time - self.get_resource_start_time).total_seconds()
                 print(f'{self.current_date_str} {self.current_time_str}  图片已保存到：{local_path}，总耗时：{time_diff}s')
                 # 保存后删除键值对并存储起来
-                del self.id_movie_dict[imdb_id]
+                del self.bad_movie_dict[imdb_id]
+                # del self.id_movie_dict[imdb_id]
             else:
                 print(f'{self.current_date_str} {self.current_time_str}  图片保存失败...')
         else:
@@ -241,7 +243,10 @@ class ImdbSpider():
         #     print("写入一次文件")
         with open("./id_movie_dict.json", 'w') as f:
             json.dump(self.id_movie_dict, f)
+        with open("./bad_movie_dict.json", 'w') as f:
+            json.dump(self.bad_movie_dict, f)
         print('还剩 ', len(self.id_movie_dict), " 张海报...")
+        print('还剩 ', len(self.bad_movie_dict), " 张找不到页面的海报...")
 
     def download_poster_from_queue(self):
         """
@@ -257,18 +262,19 @@ class ImdbSpider():
                 imdb_id = str(self.queue.get())
                 # 判断电影是否存在
                 try:
-                    # 判断是不是失败电影
-                    if imdb_id in self.bad_movie_dict:
-                        print("电影有问题，不能下载该电影")
-                        # 不用处理的就删了方便计数
-                        if imdb_id in self.id_movie_dict:
-                            del self.id_movie_dict[imdb_id]
-                        continue
+                    # # 未爬取完成时 每张图都需要判断是不是失败电影 省去时间
+                    # # 爬取完成后 需要对这些失败的电影进行重新爬取
+                    # if imdb_id in self.bad_movie_dict:
+                    #     print("电影有问题，不能下载该电影")
+                    #     # 不用处理的就删了方便计数
+                    #     if imdb_id in self.id_movie_dict:
+                    #         del self.id_movie_dict[imdb_id]
+                    #     continue
 
                     # 判断是否下载过
                     # 路径判断
                     if os.path.exists("./poster/" + imdb_id + ".jpg"):
-                        print(f"*****路径判断*****imdb_id：{imdb_id} 在之前已下载完毕！")
+                        # print(f"*****路径判断*****imdb_id：{imdb_id} 在之前已下载完毕！")
                         # 不用处理的就删了方便计数
                         if imdb_id in self.id_movie_dict:
                             del self.id_movie_dict[imdb_id]
@@ -294,7 +300,10 @@ class ImdbSpider():
                     print(f'{self.current_date_str} {self.current_time_str}  海报 {imdb_id} 下载总耗时：{download_time_diff}')
                 except Exception as e:
                     # 捕获并处理异常
-                    print(f"下载海报 {imdb_id} 时出现异常：{e}")
+                    print(f"Exception: 下载海报 {imdb_id} 时出现异常：{e}")
+                    with open("./id_movie_dict.json", 'w') as f:
+                        json.dump(self.id_movie_dict, f)
+                    print('还剩 ', len(self.id_movie_dict), " 张海报...")
                     # 先放走
                     continue
             else:
@@ -369,7 +378,6 @@ class ImdbSpider():
 
 # 主函数
 if __name__ == '__main__':
-
     imdb_spider = ImdbSpider()
     # 创建队列
     imdb_spider.create_queue(path="./data/movie.csv", col='imdb_id')
@@ -381,20 +389,3 @@ if __name__ == '__main__':
     # 启动多个线程进行图片爬取
     imdb_spider.download_images_in_threads()
 
-    # while True:
-    #     try:
-    #         imdb_spider = ImdbSpider()
-    #         # 创建队列
-    #         imdb_spider.create_queue(path="./data/movie.csv", col='imdb_id')
-    #         # 获取字典
-    #         imdb_spider.get_dict()
-    #
-    #         # 爬取
-    #         # imdb_spider.download_poster_from_queue()
-    #         # 启动多个线程进行图片爬取
-    #         imdb_spider.download_images_in_threads()
-    #         break
-    #     except Exception as e:
-    #         # 如果发生异常，打印异常信息
-    #         print('An error occurred:', str(e))
-    #         restart_program()
